@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import axios from "axios";
+import axios from '../api/axios';
 
 const VehicleStatus = () => {
   const initialVehicles = [];
@@ -11,13 +11,13 @@ const VehicleStatus = () => {
 
   // Fetch vehicles from the backend
   useEffect(() => {
-    axios.get("http://localhost:5000/vehicles").then((res) => setVehicles(res.data));
+    axios.get("/vehicles").then((res) => setVehicles(res.data));
   }, []);
 
   // Add a new vehicle
   const addVehicle = () => {
     if (!newVehicleName) return;
-    axios.post("http://localhost:5000/vehicles", { name: newVehicleName }).then((res) => {
+    axios.post("/vehicles", { name: newVehicleName }).then((res) => {
       setVehicles((prev) => [...prev, res.data]);
       setNewVehicleName("");
     });
@@ -28,7 +28,7 @@ const VehicleStatus = () => {
     const newStatus = statusUpdates[id]; 
     if (!newStatus) return;
 
-    axios.put(`http://localhost:5000/vehicles/${id}`, { status: newStatus }).then((res) => {
+    axios.put(`/vehicles/${id}`, { status: newStatus }).then((res) => {
       setVehicles((prev) =>
         prev.map((v) =>
           v._id === id ? { ...v, status: res.data.status, lastUpdated: res.data.lastUpdated } : v
