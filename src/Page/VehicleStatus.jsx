@@ -1,51 +1,55 @@
 import { useEffect, useState } from "react";
-const VehicleStatus=()=>{
-    const initialVehicles= [
-        { _id: "1", name: "Truck 1", status: "Active", lastUpdated: new Date().toISOString() },
-        { _id: "2", name: "Van 1", status: "Inactive", lastUpdated: new Date().toISOString() },
-        { _id: "3", name: "Car 1", status: "Active", lastUpdated: new Date().toISOString() },
-      ];
-      const [vehicles, setVehicles] = useState(initialVehicles);
-      const [newVehicleName, setNewVehicleName] = useState("");
-      const [statusUpdate, setStatusUpdate] = useState("");
-      const [editingVehicleId, setEditingVehicleId] = useState(null);
-    
-      // Simulate fetch vehicles from the backend
-      useEffect(() => {
-        setVehicles(initialVehicles);
-      }, []);
+import axios from "axios";
 
-        // Add a new vehicle (simulating adding to the backend)
+const VehicleStatus = () => {
+  const initialVehicles = [];
+
+  const [vehicles, setVehicles] = useState(initialVehicles);
+  const [newVehicleName, setNewVehicleName] = useState("");
+  const [editingVehicleId, setEditingVehicleId] = useState(null);
+  const [statusUpdates, setStatusUpdates] = useState({}); // Store status updates per vehicle
+
+  // Fetch vehicles from the backend
+  useEffect(() => {
+    axios.get("http://localhost:5000/vehicles").then((res) => setVehicles(res.data));
+  }, []);
+
+  // Add a new vehicle
   const addVehicle = () => {
     if (!newVehicleName) return;
-    const newVehicle = {
-      _id: (vehicles.length + 1).toString(), // Simulate an auto-incrementing ID
-      name: newVehicleName,
-      status: "Inactive",
-      lastUpdated: new Date().toISOString(),
-    };
-    setVehicles((prev) => [...prev, newVehicle]);
-    setNewVehicleName(""); // Reset the input field
+    axios.post("http://localhost:5000/vehicles", { name: newVehicleName }).then((res) => {
+      setVehicles((prev) => [...prev, res.data]);
+      setNewVehicleName("");
+    });
   };
 
-  // Update vehicle status (simulating backend update)
+  // Update vehicle status
   const updateStatus = (id) => {
-    if (!statusUpdate) return;
-    setVehicles((prev) =>
-      prev.map((vehicle) =>
-        vehicle._id === id
-          ? { ...vehicle, status: statusUpdate, lastUpdated: new Date().toISOString() }
-          : vehicle
-      )
-    );
-    setEditingVehicleId(null);
-    setStatusUpdate(""); // Reset the input field
+    const newStatus = statusUpdates[id]; 
+    if (!newStatus) return;
+
+    axios.put(`http://localhost:5000/vehicles/${id}`, { status: newStatus }).then((res) => {
+      setVehicles((prev) =>
+        prev.map((v) =>
+          v._id === id ? { ...v, status: res.data.status, lastUpdated: res.data.lastUpdated } : v
+        )
+      );
+      setEditingVehicleId(null); 
+      setStatusUpdates((prev) => ({ ...prev, [id]: "" })); 
+    });
   };
-    // Handle editing a vehicle's status
-    const handleEditClick = (id, status) => {
-        setEditingVehicleId(id);
-        setStatusUpdate(status); // Pre-fill the input with the current status
-      };
+
+  // Handle input change for status updates
+  const handleStatusChange = (id, value) => {
+    setStatusUpdates((prev) => ({ ...prev, [id]: value })); 
+  };
+
+  // Handle editing a vehicle's status
+  const handleEditClick = (id, status) => {
+    setEditingVehicleId(id);
+    setStatusUpdates((prev) => ({ ...prev, [id]: status })); 
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-4xl mx-auto bg-white shadow-md rounded-lg p-6">
@@ -82,24 +86,37 @@ const VehicleStatus=()=>{
             {vehicles.map((vehicle) => (
               <tr key={vehicle._id}>
                 <td className="border border-gray-300 p-2">{vehicle.name}</td>
-                <td className="border border-gray-300 p-2">{vehicle.status}</td>
+                <td className="border border-gray-300 p-2">
+                  {editingVehicleId === vehicle._id ? (
+                    <input
+                      type="text"
+                      value={statusUpdates[vehicle._id] || ""}
+                      onChange={(e) => handleStatusChange(vehicle._id, e.target.value)}
+                      className="border border-gray-300 rounded-md p-1"
+                    />
+                  ) : (
+                    vehicle.status
+                  )}
+                </td>
                 <td className="border border-gray-300 p-2">
                   {new Date(vehicle.lastUpdated).toLocaleString()}
                 </td>
                 <td className="border border-gray-300 p-2">
-                  <input
-                    type="text"
-                    placeholder="New Status"
-                    value={statusUpdate}
-                    onChange={(e) => setStatusUpdate(e.target.value)}
-                    className="border border-gray-300 rounded-md p-1"
-                  />
-                  <button
-                    onClick={() => updateStatus(vehicle._id)}
-                    className="bg-green-500 text-white rounded-md px-4 py-1 ml-2 hover:bg-green-600"
-                  >
-                    Update
-                  </button>
+                  {editingVehicleId === vehicle._id ? (
+                    <button
+                      onClick={() => updateStatus(vehicle._id)}
+                      className="bg-green-500 text-white rounded-md px-4 py-1 hover:bg-green-600"
+                    >
+                      Save
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleEditClick(vehicle._id, vehicle.status)}
+                      className="bg-yellow-500 text-white rounded-md px-4 py-1 hover:bg-yellow-600"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -108,5 +125,6 @@ const VehicleStatus=()=>{
       </div>
     </div>
   );
-}
-export default VehicleStatus
+};
+
+export default VehicleStatus;
